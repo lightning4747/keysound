@@ -71,7 +71,7 @@ pub fn check_running() -> Option<u32> {
     None
 }
 
-pub fn spawn_daemon(file: &Path, volume: f32, max_ms: Option<u64>) -> Result<u32, String> {
+pub fn spawn_daemon(file: &Path, volume: f32, max_ms: Option<u64>, overlap: bool) -> Result<u32, String> {
     let exe = std::env::current_exe()
         .map_err(|e| format!("Failed to determine current executable path: {e}"))?;
 
@@ -83,6 +83,10 @@ pub fn spawn_daemon(file: &Path, volume: f32, max_ms: Option<u64>) -> Result<u32
 
     if let Some(ms) = max_ms {
         cmd.arg("--max-ms").arg(ms.to_string());
+    }
+
+    if overlap {
+        cmd.arg("--overlap");
     }
 
     cmd.stdin(Stdio::null())
@@ -149,7 +153,7 @@ pub fn status_daemon() {
     }
 }
 
-pub fn run_daemon(sound_path: PathBuf, volume: f32, max_ms: Option<u64>) {
+pub fn run_daemon(sound_path: PathBuf, volume: f32, max_ms: Option<u64>, overlap: bool) {
     std::panic::set_hook(Box::new(|info| {
         log_error(&format!("Daemon panic: {}", info));
     }));
@@ -163,7 +167,7 @@ pub fn run_daemon(sound_path: PathBuf, volume: f32, max_ms: Option<u64>) {
         }
     };
 
-    let audio_manager = match crate::audio::AudioManager::new(sound) {
+    let audio_manager = match crate::audio::AudioManager::new(sound, overlap) {
         Ok(m) => Arc::new(m),
         Err(e) => {
             log_error(&format!("Audio manager error: {}", e));

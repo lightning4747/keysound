@@ -218,10 +218,11 @@ pub struct AudioManager {
     mixer: rodio::mixer::Mixer,
     sound: SoundData,
     generation: Arc<AtomicU64>,
+    overlap: bool,
 }
 
 impl AudioManager {
-    pub fn new(sound: SoundData) -> Result<Self, String> {
+    pub fn new(sound: SoundData, overlap: bool) -> Result<Self, String> {
         let mut sink = DeviceSinkBuilder::open_default_sink()
             .map_err(|e| format!("Failed to open default audio sink: {e}"))?;
         sink.log_on_drop(false);
@@ -231,21 +232,26 @@ impl AudioManager {
             mixer,
             sound,
             generation: Arc::new(AtomicU64::new(0)),
+            overlap,
         })
     }
 
     #[inline]
     pub fn play(&self) {
-        let my_gen = self.generation.fetch_add(1, Ordering::SeqCst) + 1;
         let source =
             StaticSamplesBuffer::new(self.sound.channels, self.sound.sample_rate, self.sound.samples);
-        let cancellable = CancellableSource {
-            inner: source,
-            generation: Arc::clone(&self.generation),
-            my_gen,
-            channel_idx: 0,
-            num_channels: self.sound.channels.get() as usize,
-        };
-        self.mixer.add(cancellable);
+        if self.overlap {
+            self.mixer.add(source);
+        } else {
+            let my_gen = self.generation.fetch_add(1, Ordering::SeqCst) + 1;
+            let cancellable = CancellableSource {
+                inner: source,
+                generation: Arc::clone(&self.generation),
+                my_gen,
+                channel_idx: 0,
+                num_channels: self.sound.channels.get() as usize,
+            };
+            self.mixer.add(cancellable);
+        }
     }
 }

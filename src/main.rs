@@ -9,21 +9,23 @@ struct AudioConfig {
     file: PathBuf,
     volume: f32,
     max_ms: Option<u64>,
+    overlap: bool,
 }
 
 fn print_usage() {
     eprintln!("Usage:");
-    eprintln!("  keysound run <file> [--volume 0.8] [--max-ms 400]     run in foreground (Ctrl+C to stop)");
-    eprintln!("  keysound start <file> [--volume 0.8] [--max-ms 400]   start in background");
-    eprintln!("  keysound stop                                         stop the daemon");
-    eprintln!("  keysound status                                       print running/not running");
-    eprintln!("  keysound restart <file> [--volume 0.8] [--max-ms 400] stop, then start with a new sound");
+    eprintln!("  keysound run <file> [--volume 0.8] [--max-ms 400] [--overlap]     run in foreground (Ctrl+C to stop)");
+    eprintln!("  keysound start <file> [--volume 0.8] [--max-ms 400] [--overlap]   start in background");
+    eprintln!("  keysound stop                                                     stop the daemon");
+    eprintln!("  keysound status                                                   print running/not running");
+    eprintln!("  keysound restart <file> [--volume 0.8] [--max-ms 400] [--overlap] stop, then start with a new sound");
 }
 
 fn parse_audio_args(args: &[String]) -> Result<AudioConfig, String> {
     let mut file: Option<PathBuf> = None;
     let mut volume: f32 = 1.0;
     let mut max_ms: Option<u64> = None;
+    let mut overlap = false;
 
     let mut i = 0;
     while i < args.len() {
@@ -66,6 +68,8 @@ fn parse_audio_args(args: &[String]) -> Result<AudioConfig, String> {
                 return Err("max-ms must be greater than 0".to_string());
             }
             max_ms = Some(val);
+        } else if arg == "--overlap" {
+            overlap = true;
         } else if arg.starts_with('-') {
             return Err(format!("Unknown option: '{}'", arg));
         } else if file.is_none() {
@@ -82,6 +86,7 @@ fn parse_audio_args(args: &[String]) -> Result<AudioConfig, String> {
         file,
         volume,
         max_ms,
+        overlap,
     })
 }
 
@@ -121,7 +126,7 @@ fn handle_start(args: &[String]) {
     }
 
     // Foreground validation succeeded: spawn background daemon
-    match daemon::spawn_daemon(&abs_file, config.volume, config.max_ms) {
+    match daemon::spawn_daemon(&abs_file, config.volume, config.max_ms, config.overlap) {
         Ok(pid) => {
             println!("keysound started (pid {})", pid);
         }
@@ -183,7 +188,7 @@ fn handle_run(args: &[String]) {
         }
     };
 
-    let audio_manager = match audio::AudioManager::new(sound) {
+    let audio_manager = match audio::AudioManager::new(sound, config.overlap) {
         Ok(m) => std::sync::Arc::new(m),
         Err(e) => {
             eprintln!("Audio error: {}", e);
@@ -210,7 +215,7 @@ fn handle_daemon(args: &[String]) {
         }
     };
 
-    daemon::run_daemon(config.file, config.volume, config.max_ms);
+    daemon::run_daemon(config.file, config.volume, config.max_ms, config.overlap);
 }
 
 fn main() {

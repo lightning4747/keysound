@@ -58,7 +58,11 @@ install -m755 target/release/keysound ~/.local/bin/keysound
 If you only want `keysound` active while a terminal window is open, run:
 
 ```bash
-keysound run <file> [--volume 0.8] [--max-ms 400]
+# Default mode: new keystroke cuts off the previous sound and restarts immediately
+keysound run <file> [--volume 0.8]
+
+# Overlapping mode: every keystroke plays fully and overlaps with previous ones
+keysound run <file> --overlap [--volume 0.8]
 ```
 Press `Ctrl+C` in that terminal whenever you want it to stop.
 
@@ -66,7 +70,7 @@ Press `Ctrl+C` in that terminal whenever you want it to stop.
 
 ```bash
 # Start in background
-keysound start <file> [--volume 0.8] [--max-ms 400]
+keysound start <file> [--volume 0.8] [--max-ms 400] [--overlap]
 
 # Check status
 keysound status
@@ -75,14 +79,15 @@ keysound status
 keysound stop
 
 # Restart with a new sound or settings
-keysound restart <file> [--volume 0.8] [--max-ms 400]
+keysound restart <file> [--volume 0.8] [--max-ms 400] [--overlap]
 ```
 
 ### Options
 
 - `<file>`: Path to audio file (`wav`, `mp3`, `ogg`, `flac`, `m4a`, `mp4`).
+- `--overlap`: Overlap playback so each keystroke plays fully without cutting off previous ones (polyphonic mode).
 - `--volume <value>`: Audio volume multiplier (e.g. `0.8`, `1.0`). Default: `1.0`.
-- `--max-ms <ms>`: Truncate sound length in milliseconds to keep key sounds crisp. Default: `400`.
+- `--max-ms <ms>`: Optional duration cap in milliseconds (default: plays full audio without truncation).
 
 ### Examples
 
